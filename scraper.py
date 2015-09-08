@@ -21,7 +21,13 @@
 
 import sys, csv
 
+import rtyaml
+
 from utils import CURRENT_CONGRESS, states
+
+def yaml_load(path):
+    with open(path) as f:
+        return rtyaml.load(f)
 
 def run():
     if len(sys.argv) < 2:
