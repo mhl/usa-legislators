@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # This is taken from:
 # https://github.com/unitedstates/congress-legislators/blob/master/scripts/everypolitician.py
 
