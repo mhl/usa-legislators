@@ -21,13 +21,36 @@
 
 import sys, csv
 
+import requests
 import rtyaml
+import StringIO
 
 from utils import CURRENT_CONGRESS, states
 
-def yaml_load(path):
-    with open(path) as f:
-        return rtyaml.load(f)
+def yaml_load_from_url(url):
+    r = requests.get(url)
+    return rtyaml.load(StringIO.StringIO(r.content))
+
+def yaml_load(leafname):
+    url_template = 'https://raw.githubusercontent.com/unitedstates/congress-legislators/master/{0}'
+    return yaml_load_from_url(url_template.format(leafname))
+
+def value_to_utf8(s):
+    if isinstance(s, str):
+        u = unicode(s, 'utf-8')
+    else:
+        u = unicode(s)
+    return u.encode('utf-8')
+
+def encode_row(row):
+    result = []
+    for s in row:
+        try:
+            result.append(value_to_utf8(s))
+        except UnicodeDecodeError:
+            import ipdb
+            ipdb.set_trace()
+    return result
 
 def run():
     if len(sys.argv) < 2:
@@ -35,9 +58,9 @@ def run():
         sys.exit(0)
 
     # Load current legislators.
-    data = yaml_load("../legislators-current.yaml")
+    data = yaml_load("legislators-current.yaml")
     data_social_media = { }
-    for legislator in yaml_load("../legislators-social-media.yaml"):
+    for legislator in yaml_load("legislators-social-media.yaml"):
         data_social_media[legislator['id']['bioguide']] = legislator
 
     # Create output files.
@@ -76,7 +99,7 @@ def run():
         # TODO: "If someone changed party/faction affilation in the middle of the term, you should include two entries, with the relevant start/end dates set."
 
         w = writers[term['type']]
-        w.writerow([
+        row = [
             legislator['id']['bioguide'],
             build_name(legislator, term, 'full'),
             build_area(term),
@@ -97,7 +120,8 @@ def run():
             data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("instagram"),
             legislator['id'].get('wikipedia', '').replace(" ", "_"),
             term['url'],
-        ])
+        ]
+        w.writerow(encode_row(row))
 
 ordinal_strings = { 1: "st", 2: "nd", 3: "rd", 11: 'th', 12: 'th', 13: 'th' }
 def ordinal(num):

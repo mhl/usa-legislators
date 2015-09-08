@@ -7,4 +7,5 @@
 
 lxml==3.4.4
 cssselect==0.9.1
+requests==2.7.0
 rtyaml==0.0.2
