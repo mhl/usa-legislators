@@ -3,22 +3,6 @@
 # This is taken from:
 # https://github.com/unitedstates/congress-legislators/blob/master/scripts/everypolitician.py
 
-# You don't have to do things with the ScraperWiki and lxml libraries.
-# You can use whatever libraries you want: https://morph.io/documentation/python
-# All that matters is that your final data is written to an SQLite database
-# called "data.sqlite" in the current working directory which has at least a table
-# called "data".
-
-# Converts our data into CSV files for everypolitician.org,
-# one file for the House and one file for the Senate.
-#
-# Usage:
-# python everypolitician.py outputbasename/
-#
-# Which will write:
-# outputbasename/house.csv
-# outputbasename/senate.csv
-
 import requests
 import rtyaml
 import scraperwiki
