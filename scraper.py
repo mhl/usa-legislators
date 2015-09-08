@@ -52,6 +52,12 @@ def encode_row(row):
             ipdb.set_trace()
     return result
 
+def get_chamber(term_type):
+    return {
+        'rep': 'House of Representatives',
+        'sen': 'Senate',
+    }[term_type]
+
 def run():
     if len(sys.argv) < 2:
         print("Usage: python everypolitician.py outputbasename/")
@@ -75,6 +81,7 @@ def run():
             "area",
             "group",
             "term",
+            "chamber",
             "start_date",
             "end_date",
             "given_name",
@@ -105,6 +112,7 @@ def run():
             build_area(term),
             term['party'],
             CURRENT_CONGRESS,
+            get_chamber(term['type']),
             term['start'],
             term['end'],
             legislator['name'].get('first'),
