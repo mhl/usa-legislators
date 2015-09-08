@@ -19,10 +19,9 @@
 # outputbasename/house.csv
 # outputbasename/senate.csv
 
-import sys, csv
-
 import requests
 import rtyaml
+import scraperwiki
 import StringIO
 
 from utils import CURRENT_CONGRESS, states
@@ -35,22 +34,13 @@ def yaml_load(leafname):
     url_template = 'https://raw.githubusercontent.com/unitedstates/congress-legislators/master/{0}'
     return yaml_load_from_url(url_template.format(leafname))
 
-def value_to_utf8(s):
+def value_to_unicode(s):
     if isinstance(s, str):
-        u = unicode(s, 'utf-8')
-    else:
-        u = unicode(s)
-    return u.encode('utf-8')
+        return unicode(s, 'utf-8')
+    return unicode(s)
 
-def encode_row(row):
-    result = []
-    for s in row:
-        try:
-            result.append(value_to_utf8(s))
-        except UnicodeDecodeError:
-            import ipdb
-            ipdb.set_trace()
-    return result
+def unicode_dict_values(d):
+    return {k: value_to_unicode(v) for k, v in d.items()}
 
 def get_chamber(term_type):
     return {
@@ -59,45 +49,11 @@ def get_chamber(term_type):
     }[term_type]
 
 def run():
-    if len(sys.argv) < 2:
-        print("Usage: python everypolitician.py outputbasename/")
-        sys.exit(0)
-
     # Load current legislators.
     data = yaml_load("legislators-current.yaml")
     data_social_media = { }
     for legislator in yaml_load("legislators-social-media.yaml"):
         data_social_media[legislator['id']['bioguide']] = legislator
-
-    # Create output files.
-    writers = {
-        "rep": csv.writer(open(sys.argv[1] + "house.csv", "w")),
-        "sen": csv.writer(open(sys.argv[1] + "senate.csv", "w")),
-    }
-    for w in writers.values():
-        w.writerow([
-            "id",
-            "name",
-            "area",
-            "group",
-            "term",
-            "chamber",
-            "start_date",
-            "end_date",
-            "given_name",
-            "family_name",
-            "honorific_suffix",
-            "sort_name",
-            "phone",
-            "gender",
-            "birth_date",
-            "image",
-            "twitter",
-            "facebook",
-            "instagram",
-            "wikipedia",
-            "website",
-        ])
 
     # Write out one row per legislator for their current term.
     for legislator in data:
@@ -105,31 +61,33 @@ def run():
 
         # TODO: "If someone changed party/faction affilation in the middle of the term, you should include two entries, with the relevant start/end dates set."
 
-        w = writers[term['type']]
-        row = [
-            legislator['id']['bioguide'],
-            build_name(legislator, term, 'full'),
-            build_area(term),
-            term['party'],
-            CURRENT_CONGRESS,
-            get_chamber(term['type']),
-            term['start'],
-            term['end'],
-            legislator['name'].get('first'),
-            legislator['name'].get('last'),
-            legislator['name'].get('suffix'),
-            build_name(legislator, term, 'sort'),
-            term.get('phone'),
-            legislator['bio'].get('gender'),
-            legislator['bio'].get('birthday'),
-            "https://theunitedstates.io/images/congress/original/%s.jpg" % legislator['id']['bioguide'],
-            data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("twitter"),
-            data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("facebook"),
-            data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("instagram"),
-            legislator['id'].get('wikipedia', '').replace(" ", "_"),
-            term['url'],
-        ]
-        w.writerow(encode_row(row))
+        person_data = {
+            "id": legislator['id']['bioguide'],
+            "name": build_name(legislator, term, 'full'),
+            "area": build_area(term),
+            "group": term['party'],
+            "term": CURRENT_CONGRESS,
+            "chamber": get_chamber(term['type']),
+            "start_date": term['start'],
+            "end_date": term['end'],
+            "given_name": legislator['name'].get('first'),
+            "family_name": legislator['name'].get('last'),
+            "honorific_suffix": legislator['name'].get('suffix'),
+            "sort_name": build_name(legislator, term, 'sort'),
+            "phone": term.get('phone'),
+            "gender": legislator['bio'].get('gender'),
+            "birth_date": legislator['bio'].get('birthday'),
+            "image": "https://theunitedstates.io/images/congress/original/%s.jpg" % legislator['id']['bioguide'],
+            "twitter": data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("twitter"),
+            "facebook": data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("facebook"),
+            "instagram": data_social_media.get(legislator['id']['bioguide'], {}).get("social", {}).get("instagram"),
+            "wikipedia": legislator['id'].get('wikipedia', '').replace(" ", "_"),
+            "website": term['url'],
+        }
+        scraperwiki.sqlite.save(
+            unique_keys=['id', 'term', 'chamber', 'start_date'],
+            data=unicode_dict_values(person_data)
+        )
 
 ordinal_strings = { 1: "st", 2: "nd", 3: "rd", 11: 'th', 12: 'th', 13: 'th' }
 def ordinal(num):
